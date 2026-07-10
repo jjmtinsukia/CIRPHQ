@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CIRP — Timeline Matrix</title>
+<title>CIRP -- Timeline Matrix</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -415,9 +415,9 @@ footer{
 <header class="top">
   <div class="top-row">
     <div>
-      <div class="eyebrow">Public Health Engineering · Assam &nbsp;|&nbsp; JJM 2.0</div>
-      <h1>CIRP — Timeline Matrix</h1>
-      <div class="subtitle">Live contractor implementation review — physical &amp; financial progress against NJJM deadlines across PWSS and MVS schemes.</div>
+      <div class="eyebrow">Public Health Engineering | Assam &nbsp;|&nbsp; JJM 2.0</div>
+      <h1>CIRP -- Timeline Matrix <span style="font-size:0.5em; font-weight:600; color:#8FD8D1;">| Tinsukia Division</span></h1>
+      <div class="subtitle">Live contractor implementation review -- physical &amp; financial progress against NJJM deadlines across PWSS and MVS schemes, filtered to Tinsukia Division only.</div>
     </div>
     <div class="status-cluster">
       <label class="auto-toggle">
@@ -428,7 +428,7 @@ footer{
         <span class="dot on" id="liveDot"></span>
         <span id="liveText">LIVE</span>
       </div>
-      <span class="sync-text" id="syncText">Loading…</span>
+      <span class="sync-text" id="syncText">Loading...</span>
       <button class="refresh-btn" id="refreshBtn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
         Refresh
@@ -457,7 +457,7 @@ footer{
       <option value="unknown">Not specified</option>
     </select>
     <select id="fIssue"><option value="">All issue groups</option></select>
-    <input type="text" id="fSearch" placeholder="Search scheme name, ID or division…">
+    <input type="text" id="fSearch" placeholder="Search scheme name, ID or division...">
     <button class="clear-btn" id="clearFilters">Clear filters</button>
     <span class="result-count" id="resultCount"></span>
   </div>
@@ -470,7 +470,7 @@ footer{
     <div class="legend" id="donutLegend"></div>
   </div>
   <div class="card">
-    <h3>Divisions — Scheme Count &amp; Risk Mix (Top 10)</h3>
+    <h3>Divisions -- Scheme Count &amp; Risk Mix (Top 10)</h3>
     <div id="barChart"></div>
   </div>
   <div class="card">
@@ -493,7 +493,7 @@ footer{
 </div>
 
 <footer>
-  Source: Google Sheet "CIRP - Timeline Matrix" (live) · Refreshed automatically from published tabs New SVS‑PWSS, New MVS, New MVS (Q&amp;Q) · Built for CIRP monitoring
+  Source: Google Sheet "CIRP - Timeline Matrix" (live) | Refreshed automatically from published tabs New SVS-PWSS, New MVS, New MVS (Q&amp;Q) | Filtered to Division Name = Tinsukia | Built for CIRP monitoring
 </footer>
 
 <script>
@@ -503,6 +503,9 @@ const TABS = [
   {key:"mvs",   name:"New MVS",         short:"MVS",        gid:"1174022611"},
   {key:"mvsqq", name:"New MVS (Q&Q)",   short:"MVS (Q&Q)",  gid:"808219995"}
 ];
+
+// Only rows whose Division Name matches this target are kept.
+const TARGET_DIVISION = "tinsukia";
 
 let allRows = [];
 let activeTab = "all";
@@ -542,7 +545,7 @@ function normRisk(conf){
   return "unknown";
 }
 function riskLabel(r){
-  return {ontrack:"Yes", atrisk:"No", completed:"Completed", unknown:"—"}[r] || "—";
+  return {ontrack:"Yes", atrisk:"No", completed:"Completed", unknown:"--"}[r] || "--";
 }
 
 function parseTab(csvText, tab){
@@ -563,6 +566,13 @@ function parseTab(csvText, tab){
     const sno = (r[0]||"").trim();
     if(!division && !schemeName) continue;
     if(!sno || isNaN(parseInt(sno,10))) continue;
+
+    // Keep only rows belonging to the target Division Name.
+    // Uses "contains" (not exact-match) and collapses whitespace so values like
+    // "Tinsukia PHE Division" or "Tinsukia  Division-I" (extra/odd spaces) still match.
+    const normDivision = division.replace(/\s+/g, " ").trim().toLowerCase();
+    if(!normDivision.includes(TARGET_DIVISION)) continue;
+
     const finPctRaw = (r[5]||"").trim();
     const finPct = finPctRaw === "" ? null : parseFloat(finPctRaw.replace(/[^\d.\-]/g,""));
     const confRaw = (r[7]||"").trim();
@@ -600,11 +610,14 @@ async function loadAll(userTriggered){
     allRows = results.flat();
     document.getElementById("errorBanner").classList.remove("show");
     setLive(true);
+    if(allRows.length === 0){
+      console.warn("No rows matched TARGET_DIVISION ('" + TARGET_DIVISION + "'). If this is unexpected, check the actual Division Name values being read from the sheet -- open each tab's raw CSV and inspect column B.");
+    }
     render();
   }catch(err){
     setLive(false);
     const banner = document.getElementById("errorBanner");
-    document.getElementById("errorText").textContent = "Live data unavailable right now (" + err.message + "). " + (allRows.length ? "Showing last successful load." : "Check that the sheet is shared as “Anyone with the link can view”.");
+    document.getElementById("errorText").textContent = "Live data unavailable right now (" + err.message + "). " + (allRows.length ? "Showing last successful load." : 'Check that the sheet is shared as "Anyone with the link can view".');
     banner.classList.add("show");
     if(allRows.length) render();
   }finally{
@@ -697,10 +710,10 @@ function renderKPIs(filtered){
   const avgFin = finVals.length ? (finVals.reduce((a,b)=>a+b,0)/finVals.length) : 0;
 
   const kpis = [
-    {label:"Total Schemes", value: total, sub: `${filtered.filter(r=>r.tabKey==='pwss').length} PWSS · ${filtered.filter(r=>r.tabKey==='mvs').length} MVS · ${filtered.filter(r=>r.tabKey==='mvsqq').length} MVS(Q&Q)`, cls:""},
-    {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"% of filtered" : "—", cls:"accent-success"},
-    {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"% of filtered" : "—", cls:"accent-teal"},
-    {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"% need attention" : "—", cls:"accent-alert"},
+    {label:"Total Schemes", value: total, sub: `${filtered.filter(r=>r.tabKey==='pwss').length} PWSS | ${filtered.filter(r=>r.tabKey==='mvs').length} MVS | ${filtered.filter(r=>r.tabKey==='mvsqq').length} MVS(Q&Q)`, cls:""},
+    {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"% of filtered" : "--", cls:"accent-success"},
+    {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"% of filtered" : "--", cls:"accent-teal"},
+    {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"% need attention" : "--", cls:"accent-alert"},
     {label:"Avg Financial Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
   ];
   const strip = document.getElementById("kpiStrip");
@@ -778,7 +791,7 @@ function renderBar(filtered){
       const w = (s.v/max)*(chartW-160);
       if(w>0){ bar += `<rect x="${160+x}" y="${y+4}" width="${w}" height="14" fill="${s.c}" rx="2"/>`; x+=w; }
     });
-    rows += `<text x="0" y="${y+15}" font-size="11" fill="#16262E" font-family="IBM Plex Sans">${name.length>22?name.slice(0,21)+"…":name}</text>`;
+    rows += `<text x="0" y="${y+15}" font-size="11" fill="#16262E" font-family="IBM Plex Sans">${name.length>22?name.slice(0,21)+"...":name}</text>`;
     rows += bar;
     rows += `<text x="${170+x}" y="${y+15}" font-size="11" fill="#5C7079" font-family="IBM Plex Mono">${d.total}</text>`;
   });
@@ -826,7 +839,7 @@ const COLUMNS = [
 function renderTableHead(){
   const head = document.getElementById("headRow");
   head.innerHTML = "<th></th>" + COLUMNS.map(c=>{
-    const arrow = sortState.col===c.key ? (sortState.dir===1?"▲":"▼") : "";
+    const arrow = sortState.col===c.key ? (sortState.dir===1?"^":"v") : "";
     return `<th data-col="${c.key}">${c.label}<span class="arrow">${arrow}</span></th>`;
   }).join("");
   head.querySelectorAll("th[data-col]").forEach(th=>{
@@ -865,18 +878,18 @@ function renderTableBody(filtered){
     const tr = document.createElement("tr");
     const hasDetail = r.reason || r.suggestions;
     tr.innerHTML = `
-      <td>${hasDetail ? `<button class="expand-toggle" data-key="${r.key}">${expandedKey===r.key?"–":"+"}</button>` : ""}</td>
+      <td>${hasDetail ? `<button class="expand-toggle" data-key="${r.key}">${expandedKey===r.key?"-":"+"}</button>` : ""}</td>
       <td><span class="tab-tag">${r.tabShort}</span></td>
       <td class="mono">${r.sno}</td>
       <td>${r.division}</td>
       <td class="mono">${r.schemeId}</td>
       <td class="wrap">${r.schemeName}</td>
-      <td>${r.status||"—"}</td>
-      <td class="mono">${r.finPct!==null ? r.finPct.toFixed(1)+"%" : "—"} <span class="flow-gauge mini risk-${r.risk}"><span class="fill" style="width:${r.finPct!==null?Math.min(100,r.finPct):0}%"></span></span></td>
-      <td>${r.njjmDate||"—"}</td>
+      <td>${r.status||"--"}</td>
+      <td class="mono">${r.finPct!==null ? r.finPct.toFixed(1)+"%" : "--"} <span class="flow-gauge mini risk-${r.risk}"><span class="fill" style="width:${r.finPct!==null?Math.min(100,r.finPct):0}%"></span></span></td>
+      <td>${r.njjmDate||"--"}</td>
       <td><span class="badge ${r.risk}">${riskLabel(r.risk)}</span></td>
-      <td class="wrap">${r.issueGroup||"—"}</td>
-      <td class="mono">${r.tentativeDate||"—"}</td>
+      <td class="wrap">${r.issueGroup||"--"}</td>
+      <td class="mono">${r.tentativeDate||"--"}</td>
     `;
     frag.appendChild(tr);
     if(hasDetail && expandedKey===r.key){
