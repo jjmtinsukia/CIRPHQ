@@ -714,7 +714,7 @@ function renderKPIs(filtered){
     {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"% of filtered" : "--", cls:"accent-success"},
     {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"% of filtered" : "--", cls:"accent-teal"},
     {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"% need attention" : "--", cls:"accent-alert"},
-    {label:"Avg Financial Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
+    {label:"Avg Physical Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
   ];
   const strip = document.getElementById("kpiStrip");
   strip.innerHTML = "";
