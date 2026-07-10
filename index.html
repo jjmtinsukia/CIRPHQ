@@ -154,8 +154,12 @@ input[type=checkbox]{accent-color:var(--teal);}
   max-width:1500px;
   margin:0 auto;
 }
-@media(max-width:1100px){.kpi-strip{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:560px){.kpi-strip{grid-template-columns:1fr;}}
+@media(max-width:1100px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:560px){
+  .kpi-strip{grid-template-columns:1fr;}
+}
 .kpi{
   background:var(--surface);
   border:1px solid var(--line);
@@ -330,7 +334,9 @@ input[type=checkbox]{accent-color:var(--teal);}
   grid-template-columns:340px 1fr 1fr;
   gap:12px;
 }
-@media(max-width:980px){.charts-row{grid-template-columns:1fr;}}
+@media(max-width:980px){
+  .charts-row{grid-template-columns:1fr;}
+}
 .card{
   background:var(--surface);
   border:1px solid var(--line);
@@ -503,6 +509,9 @@ footer{
       <option value="unknown">Not specified</option>
     </select>
     <select id="fIssue"><option value="">All issue groups</option></select>
+    <select id="fSOName"><option value="">All SO Names</option></select>
+    <select id="fSubDiv"><option value="">All Sub-Divisions</option></select>
+    <select id="fLAC"><option value="">All LACs</option></select>
     <input type="text" id="fSearch" placeholder="Search scheme name, ID or division...">
     <button class="clear-btn" id="clearFilters">Clear filters</button>
     <span class="result-count" id="resultCount"></span>
@@ -551,16 +560,18 @@ footer{
 
 <script>
 const SHEET_ID = "1e5-DMSWzGL8MUNVFiqrbG9PV0s4zJ2ywEATOrrUUoDY";
+const IMIS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCZb7LO3b1KMda5osejVObaQuYwbz4pak7tiH4tjiVLe9zg7UiHyb4lPqVqdFCtPm22N8k3vtYSOX/pub?gid=0&single=true&output=csv";
+
 const TABS = [
   {key:"pwss",  name:"New SVS - PWSS",  short:"PWSS (SVS)", gid:"700142457"},
   {key:"mvs",   name:"New MVS",         short:"MVS",        gid:"1174022611"},
   {key:"mvsqq", name:"New MVS (Q&Q)",   short:"MVS (Q&Q)",  gid:"808219995"}
 ];
 
-// Only rows whose Division Name matches this target are kept.
 const TARGET_DIVISION = "tinsukia";
 
 let allRows = [];
+let imisData = {};
 let activeTab = "all";
 let sortState = {col:null, dir:1};
 let expandedKey = null;
@@ -573,20 +584,43 @@ function csvUrl(tab){
   ];
 }
 
-async function fetchCSVText(tab){
+async function fetchCSVText(url){
   let lastErr;
-  for(const url of csvUrl(tab)){
+  const urls = Array.isArray(url) ? url : [url];
+  for(const u of urls){
     try{
-      const res = await fetch(url, {cache:"no-store"});
+      const res = await fetch(u, {cache:"no-store"});
       if(!res.ok) throw new Error("HTTP "+res.status);
       const text = await res.text();
       if(!text || text.trim().toLowerCase().startsWith("<!doctype") || text.trim().startsWith("<html")){
-        throw new Error("Non-CSV response (check sharing permissions)");
+        throw new Error("Non-CSV response");
       }
       return text;
     }catch(e){ lastErr = e; }
   }
   throw lastErr;
+}
+
+async function loadIMISData(){
+  try{
+    const text = await fetchCSVText(IMIS_SHEET_URL);
+    const parsed = Papa.parse(text, {skipEmptyLines:false});
+    const rows = parsed.data;
+    imisData = {};
+    rows.forEach(r=>{
+      const schemeId = (r[0]||"").trim();
+      if(schemeId && schemeId.toLowerCase() !== "imis scheme id"){
+        imisData[schemeId] = {
+          soName: (r[1]||"").trim(),
+          subDivision: (r[2]||"").trim(),
+          lac: (r[3]||"").trim()
+        };
+      }
+    });
+    console.log("IMIS data loaded:", Object.keys(imisData).length, "records");
+  }catch(err){
+    console.error("Failed to load IMIS data:", err);
+  }
 }
 
 function normRisk(conf){
@@ -617,24 +651,24 @@ function parseTab(csvText, tab){
     const division = (r[1]||"").trim();
     const schemeName = (r[3]||"").trim();
     const sno = (r[0]||"").trim();
+    const schemeId = (r[2]||"").trim();
     if(!division && !schemeName) continue;
     if(!sno || isNaN(parseInt(sno,10))) continue;
 
-    // Keep only rows belonging to the target Division Name.
-    // Uses "contains" (not exact-match) and collapses whitespace so values like
-    // "Tinsukia PHE Division" or "Tinsukia  Division-I" (extra/odd spaces) still match.
     const normDivision = division.replace(/\s+/g, " ").trim().toLowerCase();
     if(!normDivision.includes(TARGET_DIVISION)) continue;
 
     const finPctRaw = (r[5]||"").trim();
     const finPct = finPctRaw === "" ? null : parseFloat(finPctRaw.replace(/[^\d.\-]/g,""));
     const confRaw = (r[7]||"").trim();
+    
+    const imis = imisData[schemeId] || {};
     out.push({
       tabKey: tab.key,
       tabShort: tab.short,
       sno: sno,
       division: division || "(Unspecified)",
-      schemeId: (r[2]||"").trim(),
+      schemeId: schemeId,
       schemeName: schemeName || "(Unnamed scheme)",
       status: (r[4]||"").trim(),
       finPct: finPct,
@@ -645,7 +679,10 @@ function parseTab(csvText, tab){
       reason: (r[9]||"").trim(),
       suggestions: (r[10]||"").trim(),
       tentativeDate: (r[11]||"").trim(),
-      key: tab.key + "-" + sno + "-" + (r[2]||"")
+      soName: imis.soName || "--",
+      subDivision: imis.subDivision || "--",
+      lac: imis.lac || "--",
+      key: tab.key + "-" + sno + "-" + schemeId
     });
   }
   return out;
@@ -656,21 +693,22 @@ async function loadAll(userTriggered){
   btn.classList.add("spinning");
   setLive(null);
   try{
+    await loadIMISData();
     const results = await Promise.all(TABS.map(async t=>{
-      const text = await fetchCSVText(t);
+      const text = await fetchCSVText(csvUrl(t));
       return parseTab(text, t);
     }));
     allRows = results.flat();
     document.getElementById("errorBanner").classList.remove("show");
     setLive(true);
     if(allRows.length === 0){
-      console.warn("No rows matched TARGET_DIVISION ('" + TARGET_DIVISION + "'). If this is unexpected, check the actual Division Name values being read from the sheet -- open each tab's raw CSV and inspect column B.");
+      console.warn("No rows matched TARGET_DIVISION");
     }
     render();
   }catch(err){
     setLive(false);
     const banner = document.getElementById("errorBanner");
-    document.getElementById("errorText").textContent = "Live data unavailable right now (" + err.message + "). " + (allRows.length ? "Showing last successful load." : 'Check that the sheet is shared as "Anyone with the link can view".');
+    document.getElementById("errorText").textContent = "Live data unavailable (" + err.message + "). " + (allRows.length ? "Showing last load." : 'Check sharing.');
     banner.classList.add("show");
     if(allRows.length) render();
   }finally{
@@ -687,7 +725,7 @@ function setLive(ok){
   else{ dot.className="dot off"; txt.textContent="OFFLINE"; }
 }
 
-/* ---------------- Filters ---------------- */
+/* Filters */
 function getFilterState(){
   return {
     tab: activeTab,
@@ -695,6 +733,9 @@ function getFilterState(){
     status: document.getElementById("fStatus").value,
     risk: document.getElementById("fRisk").value,
     issue: document.getElementById("fIssue").value,
+    soName: document.getElementById("fSOName").value,
+    subDiv: document.getElementById("fSubDiv").value,
+    lac: document.getElementById("fLAC").value,
     search: document.getElementById("fSearch").value.trim().toLowerCase()
   };
 }
@@ -707,6 +748,9 @@ function applyFilters(rows){
     if(f.status && r.status !== f.status) return false;
     if(f.risk && r.risk !== f.risk) return false;
     if(f.issue && r.issueGroup !== f.issue) return false;
+    if(f.soName && r.soName !== f.soName) return false;
+    if(f.subDiv && r.subDivision !== f.subDiv) return false;
+    if(f.lac && r.lac !== f.lac) return false;
     if(f.search){
       const hay = (r.schemeName+" "+r.schemeId+" "+r.division).toLowerCase();
       if(!hay.includes(f.search)) return false;
@@ -719,9 +763,16 @@ function populateFilterOptions(){
   const divisions = [...new Set(allRows.map(r=>r.division))].sort();
   const statuses = [...new Set(allRows.map(r=>r.status).filter(Boolean))].sort();
   const issues = [...new Set(allRows.map(r=>r.issueGroup).filter(Boolean))].sort();
+  const soNames = [...new Set(allRows.map(r=>r.soName).filter(s=>s!=="--"))].sort();
+  const subDivs = [...new Set(allRows.map(r=>r.subDivision).filter(s=>s!=="--"))].sort();
+  const lacs = [...new Set(allRows.map(r=>r.lac).filter(l=>l!=="--"))].sort();
+  
   fillSelect("fDivision", divisions);
   fillSelect("fStatus", statuses);
   fillSelect("fIssue", issues);
+  fillSelect("fSOName", soNames);
+  fillSelect("fSubDiv", subDivs);
+  fillSelect("fLAC", lacs);
 }
 function fillSelect(id, values){
   const sel = document.getElementById(id);
@@ -737,7 +788,7 @@ function fillSelect(id, values){
   if(values.includes(current)) sel.value = current;
 }
 
-/* ---------------- Tabs ---------------- */
+/* Tabs */
 function renderTabPills(){
   const wrap = document.getElementById("tabPills");
   wrap.innerHTML = "";
@@ -753,7 +804,7 @@ function renderTabPills(){
   });
 }
 
-/* ---------------- KPIs ---------------- */
+/* KPIs */
 function renderKPIs(filtered){
   const total = filtered.length;
   const completed = filtered.filter(r=>r.risk==="completed").length;
@@ -767,7 +818,7 @@ function renderKPIs(filtered){
     {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"%  of filtered" : "--", cls:"accent-success"},
     {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"%  of filtered" : "--", cls:"accent-teal"},
     {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"%  need attention" : "--", cls:"accent-alert"},
-    {label:"Avg Financial Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
+    {label:"Avg Physical Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
   ];
   const strip = document.getElementById("kpiStrip");
   strip.innerHTML = "";
@@ -784,7 +835,7 @@ function renderKPIs(filtered){
   });
 }
 
-/* ---------------- Charts (native SVG) ---------------- */
+/* Charts */
 function renderDonut(filtered){
   const cats = [
     {key:"ontrack", label:"On track (Yes)", color:"#1E9E6B"},
@@ -801,16 +852,10 @@ function renderDonut(filtered){
     const count = filtered.filter(x=>x.risk===c.key).length;
     const frac = count/total;
     const dash = frac*circ;
-    arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.color}" stroke-width="${sw}"
-      stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-cum}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    arcs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.color}" stroke-width="${sw}" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-cum}" transform="rotate(-90 ${cx} ${cy})"/>`;
     cum += dash;
   });
-  const svg = `<svg width="100%" height="180" viewBox="0 0 160 160">
-    ${arcs}
-    <circle cx="${cx}" cy="${cy}" r="${r-sw/2-4}" fill="#fff"/>
-    <text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="22" fill="#0B2540">${total}</text>
-    <text x="${cx}" y="${cy+16}" text-anchor="middle" font-family="IBM Plex Sans" font-size="10" fill="#5C7079">SCHEMES</text>
-  </svg>`;
+  const svg = `<svg width="100%" height="180" viewBox="0 0 160 160">${arcs}<circle cx="${cx}" cy="${cy}" r="${r-sw/2-4}" fill="#fff"/><text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="22" fill="#0B2540">${total}</text><text x="${cx}" y="${cy+16}" text-anchor="middle" font-family="IBM Plex Sans" font-size="10" fill="#5C7079">SCHEMES</text></svg>`;
   document.getElementById("donutChart").innerHTML = svg;
   document.getElementById("donutLegend").innerHTML = cats.map(c=>{
     const count = filtered.filter(x=>x.risk===c.key).length;
@@ -827,28 +872,20 @@ function renderBar(filtered){
   });
   const top = Object.entries(divMap).sort((a,b)=>b[1].total-a[1].total).slice(0,10);
   const max = top.length ? top[0][1].total : 1;
-  const rowH = 26;
-  const chartW = 560;
+  const rowH = 26, chartW = 560;
   let rows = "";
   top.forEach(([name, d], i)=>{
     const y = i*rowH;
     let x = 0;
-    const segs = [
-      {v:d.completed, c:"#0F9E96"},
-      {v:d.ontrack, c:"#1E9E6B"},
-      {v:d.atrisk, c:"#D6483E"},
-      {v:d.unknown, c:"#B9C3C6"}
-    ];
+    const segs = [{v:d.completed, c:"#0F9E96"}, {v:d.ontrack, c:"#1E9E6B"}, {v:d.atrisk, c:"#D6483E"}, {v:d.unknown, c:"#B9C3C6"}];
     let bar = "";
     segs.forEach(s=>{
       const w = (s.v/max)*(chartW-160);
       if(w>0){ bar += `<rect x="${160+x}" y="${y+4}" width="${w}" height="14" fill="${s.c}" rx="2"/>`; x+=w; }
     });
-    rows += `<text x="0" y="${y+15}" font-size="11" fill="#16262E" font-family="IBM Plex Sans">${name.length>22?name.slice(0,21)+"...":name}</text>`;
-    rows += bar;
-    rows += `<text x="${170+x}" y="${y+15}" font-size="11" fill="#5C7079" font-family="IBM Plex Mono">${d.total}</text>`;
+    rows += `<text x="0" y="${y+15}" font-size="11" fill="#16262E" font-family="IBM Plex Sans">${name.length>22?name.slice(0,21)+"...":name}</text>${bar}<text x="${170+x}" y="${y+15}" font-size="11" fill="#5C7079" font-family="IBM Plex Mono">${d.total}</text>`;
   });
-  const svg = `<svg width="100%" height="${Math.max(top.length*rowH+10,60)}" viewBox="0 0 ${chartW} ${top.length*rowH+10}">${rows || '<text x="0" y="20" fill="#5C7079" font-size="12">No data for current filters</text>'}</svg>`;
+  const svg = `<svg width="100%" height="${Math.max(top.length*rowH+10,60)}" viewBox="0 0 ${chartW} ${top.length*rowH+10}">${rows || '<text x="0" y="20" fill="#5C7079" font-size="12">No data</text>'}</svg>`;
   document.getElementById("barChart").innerHTML = svg;
 }
 
@@ -860,21 +897,18 @@ function renderPeriod(filtered){
   });
   const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const max = entries.length ? entries[0][1] : 1;
-  const rowH = 26;
-  const chartW = 460;
+  const rowH = 26, chartW = 460;
   let rows = "";
   entries.forEach(([name,count],i)=>{
     const y = i*rowH;
     const w = (count/max)*(chartW-150);
-    rows += `<text x="0" y="${y+15}" font-size="11" fill="#16262E" font-family="IBM Plex Sans">${name}</text>`;
-    rows += `<rect x="140" y="${y+4}" width="${w}" height="14" fill="#123A5E" rx="2"/>`;
-    rows += `<text x="${150+w}" y="${y+15}" font-size="11" fill="#5C7079" font-family="IBM Plex Mono">${count}</text>`;
+    rows += `<text x="0" y="${y+15}" font-size="11" fill="#16262E" font-family="IBM Plex Sans">${name}</text><rect x="140" y="${y+4}" width="${w}" height="14" fill="#123A5E" rx="2"/><text x="${150+w}" y="${y+15}" font-size="11" fill="#5C7079" font-family="IBM Plex Mono">${count}</text>`;
   });
-  const svg = `<svg width="100%" height="${Math.max(entries.length*rowH+10,60)}" viewBox="0 0 ${chartW} ${entries.length*rowH+10}">${rows || '<text x="0" y="20" fill="#5C7079" font-size="12">No data for current filters</text>'}</svg>`;
+  const svg = `<svg width="100%" height="${Math.max(entries.length*rowH+10,60)}" viewBox="0 0 ${chartW} ${entries.length*rowH+10}">${rows || '<text x="0" y="20" fill="#5C7079" font-size="12">No data</text>'}</svg>`;
   document.getElementById("periodChart").innerHTML = svg;
 }
 
-/* ---------------- Export functionality ---------------- */
+/* Export */
 function exportToCSV(rows, filename){
   const EXPORT_COLUMNS = [
     {key:"tabShort", label:"Category"},
@@ -883,10 +917,13 @@ function exportToCSV(rows, filename){
     {key:"schemeId", label:"Scheme ID"},
     {key:"schemeName", label:"Scheme Name"},
     {key:"status", label:"Status"},
-    {key:"finPct", label:"Financial %"},
+    {key:"finPct", label:"Physical %"},
     {key:"njjmDate", label:"NJJM Target Date"},
     {key:"risk", label:"Confidence"},
     {key:"issueGroup", label:"Issue Group"},
+    {key:"soName", label:"SO Name"},
+    {key:"subDivision", label:"Sub-Division"},
+    {key:"lac", label:"LAC"},
     {key:"reason", label:"Reason"},
     {key:"suggestions", label:"Suggestions"},
     {key:"tentativeDate", label:"Tentative Date"}
@@ -898,7 +935,6 @@ function exportToCSV(rows, filename){
   }
 
   let csv = EXPORT_COLUMNS.map(c=>c.label).join(",") + "\n";
-  
   rows.forEach(row=>{
     const values = EXPORT_COLUMNS.map(col=>{
       let val = row[col.key] || "";
@@ -922,10 +958,10 @@ function exportToCSV(rows, filename){
 
 function renderExportButtons(filtered){
   const categories = [
-    {risk:"ontrack", label:"On Track (Yes)", icon:"✓"},
-    {risk:"atrisk", label:"At Risk (No)", icon:"⚠"},
-    {risk:"completed", label:"Completed", icon:"✓"},
-    {risk:"unknown", label:"Not Specified", icon:"−"}
+    {risk:"ontrack", label:"On Track (Yes)"},
+    {risk:"atrisk", label:"At Risk (No)"},
+    {risk:"completed", label:"Completed"},
+    {risk:"unknown", label:"Not Specified"}
   ];
   
   const wrap = document.getElementById("exportButtons");
@@ -936,22 +972,17 @@ function renderExportButtons(filtered){
     const count = rows.length;
     const btn = document.createElement("button");
     btn.className = "export-btn";
-    btn.innerHTML = `
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5m0 0l5-5m-5 5V3"/>
-      </svg>
-      Export ${cat.label} (${count})
-    `;
+    btn.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5m0 0l5-5m-5 5V3"/></svg> Export ${cat.label} (${count})`;
     btn.onclick = ()=>{
       const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `CIRP-${cat.label.replace(/\\s+/g,"-")}-${timestamp}.csv`;
+      const filename = `CIRP-${cat.label.replace(/\s+/g,"-")}-${timestamp}.csv`;
       exportToCSV(rows, filename);
     };
     wrap.appendChild(btn);
   });
 }
 
-/* ---------------- Table ---------------- */
+/* Table */
 const COLUMNS = [
   {key:"tabShort", label:"Category"},
   {key:"sno", label:"SNo"},
@@ -963,6 +994,9 @@ const COLUMNS = [
   {key:"njjmDate", label:"NJJM Target"},
   {key:"risk", label:"Confidence"},
   {key:"issueGroup", label:"Issue Group"},
+  {key:"soName", label:"SO Name"},
+  {key:"subDivision", label:"Sub-Division"},
+  {key:"lac", label:"LAC"},
   {key:"tentativeDate", label:"Tentative Date"}
 ];
 
@@ -1019,16 +1053,16 @@ function renderTableBody(filtered){
       <td>${r.njjmDate||"--"}</td>
       <td><span class="badge ${r.risk}">${riskLabel(r.risk)}</span></td>
       <td class="wrap">${r.issueGroup||"--"}</td>
+      <td>${r.soName||"--"}</td>
+      <td>${r.subDivision||"--"}</td>
+      <td>${r.lac||"--"}</td>
       <td class="mono">${r.tentativeDate||"--"}</td>
     `;
     frag.appendChild(tr);
     if(hasDetail && expandedKey===r.key){
       const dt = document.createElement("tr");
       dt.className = "expand-row";
-      dt.innerHTML = `<td></td><td colspan="${COLUMNS.length}">
-        ${r.reason ? `<strong>Reason:</strong> ${r.reason}<br>` : ""}
-        ${r.suggestions ? `<strong>Suggestions / Remarks:</strong> ${r.suggestions}` : ""}
-      </td>`;
+      dt.innerHTML = `<td></td><td colspan="${COLUMNS.length}">${r.reason ? `<strong>Reason:</strong> ${r.reason}<br>` : ""}${r.suggestions ? `<strong>Suggestions:</strong> ${r.suggestions}` : ""}</td>`;
       frag.appendChild(dt);
     }
   });
@@ -1043,7 +1077,7 @@ function renderTableBody(filtered){
   });
 }
 
-/* ---------------- Master render ---------------- */
+/* Master render */
 function render(skipFilterRepopulate){
   if(!skipFilterRepopulate) populateFilterOptions();
   renderTabPills();
@@ -1058,8 +1092,8 @@ function render(skipFilterRepopulate){
   document.getElementById("resultCount").textContent = `${filtered.length} of ${allRows.length} schemes shown`;
 }
 
-/* ---------------- Wire up ---------------- */
-["fDivision","fStatus","fRisk","fIssue"].forEach(id=>{
+/* Event handlers */
+["fDivision","fStatus","fRisk","fIssue","fSOName","fSubDiv","fLAC"].forEach(id=>{
   document.getElementById(id).addEventListener("change", ()=>render(true));
 });
 document.getElementById("fSearch").addEventListener("input", ()=>render(true));
@@ -1068,6 +1102,9 @@ document.getElementById("clearFilters").addEventListener("click", ()=>{
   document.getElementById("fStatus").value="";
   document.getElementById("fRisk").value="";
   document.getElementById("fIssue").value="";
+  document.getElementById("fSOName").value="";
+  document.getElementById("fSubDiv").value="";
+  document.getElementById("fLAC").value="";
   document.getElementById("fSearch").value="";
   activeTab = "all";
   render();
