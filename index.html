@@ -275,6 +275,52 @@ input[type=checkbox]{accent-color:var(--teal);}
   white-space:nowrap;
 }
 
+/* ---------- Export section ---------- */
+.export-section{
+  max-width:1500px;
+  margin:18px auto 0;
+  padding:0 clamp(16px,3vw,40px);
+}
+.export-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px 16px;
+}
+.export-title{
+  font-size:12.5px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--ink-2);
+  font-weight:700;
+  margin-bottom:12px;
+}
+.export-buttons{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.export-btn{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:12.5px;
+  font-weight:600;
+  padding:8px 12px;
+  border-radius:7px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  cursor:pointer;
+  transition:.15s ease;
+  color:var(--text);
+}
+.export-btn:hover{
+  background:var(--teal-light);
+  border-color:var(--teal-dark);
+  color:var(--teal-dark);
+}
+.export-btn svg{width:14px; height:14px;}
+
 /* ---------- Charts ---------- */
 .charts-row{
   max-width:1500px;
@@ -460,6 +506,13 @@ footer{
     <input type="text" id="fSearch" placeholder="Search scheme name, ID or division...">
     <button class="clear-btn" id="clearFilters">Clear filters</button>
     <span class="result-count" id="resultCount"></span>
+  </div>
+</div>
+
+<div class="export-section">
+  <div class="export-card">
+    <div class="export-title">Export Filtered Data</div>
+    <div class="export-buttons" id="exportButtons"></div>
   </div>
 </div>
 
@@ -711,10 +764,10 @@ function renderKPIs(filtered){
 
   const kpis = [
     {label:"Total Schemes", value: total, sub: `${filtered.filter(r=>r.tabKey==='pwss').length} PWSS | ${filtered.filter(r=>r.tabKey==='mvs').length} MVS | ${filtered.filter(r=>r.tabKey==='mvsqq').length} MVS(Q&Q)`, cls:""},
-    {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"% of filtered" : "--", cls:"accent-success"},
-    {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"% of filtered" : "--", cls:"accent-teal"},
-    {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"% need attention" : "--", cls:"accent-alert"},
-    {label:"Avg Physical Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
+    {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"%  of filtered" : "--", cls:"accent-success"},
+    {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"%  of filtered" : "--", cls:"accent-teal"},
+    {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"%  need attention" : "--", cls:"accent-alert"},
+    {label:"Avg Financial Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
   ];
   const strip = document.getElementById("kpiStrip");
   strip.innerHTML = "";
@@ -821,6 +874,83 @@ function renderPeriod(filtered){
   document.getElementById("periodChart").innerHTML = svg;
 }
 
+/* ---------------- Export functionality ---------------- */
+function exportToCSV(rows, filename){
+  const EXPORT_COLUMNS = [
+    {key:"tabShort", label:"Category"},
+    {key:"sno", label:"SNo"},
+    {key:"division", label:"Division"},
+    {key:"schemeId", label:"Scheme ID"},
+    {key:"schemeName", label:"Scheme Name"},
+    {key:"status", label:"Status"},
+    {key:"finPct", label:"Financial %"},
+    {key:"njjmDate", label:"NJJM Target Date"},
+    {key:"risk", label:"Confidence"},
+    {key:"issueGroup", label:"Issue Group"},
+    {key:"reason", label:"Reason"},
+    {key:"suggestions", label:"Suggestions"},
+    {key:"tentativeDate", label:"Tentative Date"}
+  ];
+  
+  if(!rows || rows.length === 0){
+    alert("No data to export for this category");
+    return;
+  }
+
+  let csv = EXPORT_COLUMNS.map(c=>c.label).join(",") + "\n";
+  
+  rows.forEach(row=>{
+    const values = EXPORT_COLUMNS.map(col=>{
+      let val = row[col.key] || "";
+      if(col.key === "finPct" && val !== "") val = val.toFixed(1) + "%";
+      val = String(val).replace(/"/g, '""');
+      return `"${val}"`;
+    });
+    csv += values.join(",") + "\n";
+  });
+
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function renderExportButtons(filtered){
+  const categories = [
+    {risk:"ontrack", label:"On Track (Yes)", icon:"✓"},
+    {risk:"atrisk", label:"At Risk (No)", icon:"⚠"},
+    {risk:"completed", label:"Completed", icon:"✓"},
+    {risk:"unknown", label:"Not Specified", icon:"−"}
+  ];
+  
+  const wrap = document.getElementById("exportButtons");
+  wrap.innerHTML = "";
+  
+  categories.forEach(cat=>{
+    const rows = filtered.filter(r=>r.risk===cat.risk);
+    const count = rows.length;
+    const btn = document.createElement("button");
+    btn.className = "export-btn";
+    btn.innerHTML = `
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M7 10l5 5m0 0l5-5m-5 5V3"/>
+      </svg>
+      Export ${cat.label} (${count})
+    `;
+    btn.onclick = ()=>{
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `CIRP-${cat.label.replace(/\\s+/g,"-")}-${timestamp}.csv`;
+      exportToCSV(rows, filename);
+    };
+    wrap.appendChild(btn);
+  });
+}
+
 /* ---------------- Table ---------------- */
 const COLUMNS = [
   {key:"tabShort", label:"Category"},
@@ -922,6 +1052,7 @@ function render(skipFilterRepopulate){
   renderDonut(filtered);
   renderBar(filtered);
   renderPeriod(filtered);
+  renderExportButtons(filtered);
   renderTableHead();
   renderTableBody(filtered);
   document.getElementById("resultCount").textContent = `${filtered.length} of ${allRows.length} schemes shown`;
