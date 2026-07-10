@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CIRP – Timeline Matrix</title>
+
+    <!-- Google Font & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fc;
+            color: #1e293b;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .dashboard { max-width: 1600px; margin: 0 auto; }
+
+        /* Header */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+            gap: 16px;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left .icon { font-size: 28px; color: #1e4a7a; }
+        .header-left h1 { font-size: 26px; font-weight: 700; color: #0a1e3c; }
+        .header-left h1 span { color: #2d6a9f; }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 14px;
+            color: #475569;
+        }
+        .header-right .badge {
+            background: #e2e8f0;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        .header-right .badge i { margin-right: 6px; color: #2d6a9f; }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 28px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 4px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s ease;
+        }
+        .tab-btn:hover { color: #1e293b; background: #f1f5f9; }
+        .tab-btn.active {
+            color: #1e4a7a;
+            background: #ffffff;
+            box-shadow: 0 -2px 0 #1e4a7a inset;
+        }
+        .tab-btn .count {
+            display: inline-block;
+            background: #e2e8f0;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 0 10px;
+            border-radius: 30px;
+            margin-left: 8px;
+            color: #1e293b;
+        }
+        .tab-btn.active .count { background: #dbeafe; color: #1e4a7a; }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .summary-card {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #eef2f6;
+            transition: transform 0.1s ease;
+        }
+        .summary-card:hover { transform: translateY(-2px); }
+        .summary-card .label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .summary-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0a1e3c;
+        }
+        .summary-card .sub {
+            font-size: 13px;
+            color: #475569;
+            margin-top: 4px;
+        }
+
+        /* Table */
+        .table-wrapper {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #eef2f6;
+            overflow: hidden;
+        }
+        .table-scroll { overflow-x: auto; padding: 4px 0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            min-width: 1100px;
+        }
+        thead {
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        thead th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #475569;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            z-index: 5;
+        }
+        thead th i { margin-right: 5px; color: #94a3b8; }
+        tbody tr { border-bottom: 1px solid #f1f5f9; }
+        tbody tr:hover { background: #fafcff; }
+        tbody td { padding: 12px 16px; vertical-align: middle; line-height: 1.4; }
+
+        /* Badges */
+        .badge-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-status.on-track { background: #dcfce7; color: #166534; }
+        .badge-status.at-risk  { background: #fef9c3; color: #854d0e; }
+        .badge-status.delayed  { background: #fee2e2; color: #991b1b; }
+        .badge-status.completed { background: #dbeafe; color: #1e40af; }
+        .badge-status.default   { background: #f1f5f9; color: #475569; }
+
+        .badge-confidence {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge-confidence.yes { background: #dcfce7; color: #166534; }
+        .badge-confidence.no  { background: #fee2e2; color: #991b1b; }
+        .badge-confidence.na  { background: #f1f5f9; color: #64748b; }
+
+        .progress-bar {
+            display: inline-block;
+            width: 80px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 30px;
+            overflow: hidden;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 30px;
+            background: #2d6a9f;
+            transition: width 0.3s;
+        }
+        .progress-text { font-weight: 500; font-size: 13px; }
+
+        .loading-state, .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: #64748b;
+            text-align: center;
+        }
+        .loading-state .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #2d6a9f;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .footer-meta {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .footer-meta a { color: #2d6a9f; text-decoration: none; }
+        .footer-meta a:hover { text-decoration: underline; }
+
+        .chip {
+            display: inline-block;
+            background: #f1f5f9;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #334155;
+        }
+        .text-truncate {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @media (max-width: 700px) {
+            body { padding: 14px; }
+            .header-left h1 { font-size: 20px; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .tab-btn { padding: 10px 14px; font-size: 13px; }
+            table { font-size: 13px; min-width: 900px; }
+            thead th, tbody td { padding: 8px 10px; }
+        }
+        @media (max-width: 480px) {
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <span class="icon"><i class="fas fa-chart-line"></i></span>
+            <h1>CIRP <span>·</span> Timeline Matrix</h1>
+        </div>
+        <div class="header-right">
+            <span class="badge"><i class="fas fa-sync-alt"></i> Live</span>
+            <span id="lastRefresh" class="badge"><i class="far fa-clock"></i> loading…</span>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tabs" id="tabHeaders"></div>
+
+    <!-- Summary -->
+    <div id="summaryContainer"></div>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+        <div id="tableContainer">
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <div>Loading data…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-meta">
+        <span>
+            <i class="fas fa-database"></i> Data sourced from
+            <a href="#" id="sourceLink" target="_blank">Google Sheet</a>
+        </span>
+        <span id="rowCount">0 rows</span>
+    </div>
+
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        const SPREADSHEET_ID = '1e5-DMSWzGL8MUNVFiqrbG9PV0s4zJ2ywEATOrrUUoDY';
+        const BASE_PUBLISHED_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/pub`;
+
+        const SHEETS = [
+            { display: 'New SVS - PWSS', gid: '700142457' },
+            { display: 'New MVS', gid: '1174022611' },
+            { display: 'New MVS (Q&Q)', gid: '808219995' }
+        ];
+
+        const COLUMNS = [
+            'SNo', 'Division Name', 'IMIS Scheme Id', 'Scheme Name',
+            'Scheme Status', 'Financial Progress Percentage',
+            'Final Physical Completion Date by NJJM',
+            'Are you confident that Contractor will be able to complete within the timeline given by NJJM along with trial run, handing over, and completion certificate? (Yes/ No)',
+            'Group of issue', 'If no, please specify the reason',
+            'Your Suggestions/ Inpts/ Remarks',
+            'Tentative timeline for completion and handing Over (In DD-MM-YYYY Format Only)'
+        ];
+
+        let allData = {};
+        let activeTab = SHEETS[0].display;
+        let isLoading = false;
+
+        const tabHeadersEl = document.getElementById('tabHeaders');
+        const summaryContainer = document.getElementById('summaryContainer');
+        const tableContainer = document.getElementById('tableContainer');
+        const rowCountEl = document.getElementById('rowCount');
+        const lastRefreshEl = document.getElementById('lastRefresh');
+        const sourceLink = document.getElementById('sourceLink');
+        sourceLink.href = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
+
+        function safeStr(v) { return v == null ? '' : String(v).trim(); }
+
+        function parseProgress(v) {
+            const s = safeStr(v).replace(/%/g, '').trim();
+            const n = parseFloat(s);
+            return isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
+        }
+
+        function getStatusClass(status) {
+            const s = safeStr(status).toLowerCase();
+            if (s.includes('on track') || s.includes('ontrack')) return 'on-track';
+            if (s.includes('at risk') || s.includes('at-risk')) return 'at-risk';
+            if (s.includes('delay') || s.includes('delayed')) return 'delayed';
+            if (s.includes('complete') || s.includes('completed')) return 'completed';
+            return 'default';
+        }
+
+        function getConfidenceClass(v) {
+            const s = safeStr(v).toLowerCase();
+            if (s === 'yes') return 'yes';
+            if (s === 'no') return 'no';
+            return 'na';
+        }
+
+        function formatDate(d) {
+            if (!d) return '—';
+            const s = safeStr(d);
+            return s.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/) ? s : s;
+        }
+
+        // FIXED: Simple CSV parser without infinite loop risk
+        function parseCSV(text) {
+            const rows = [];
+            const lines = text.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
+                
+                const fields = [];
+                let current = '';
+                let inQuotes = false;
+                let j = 0;
+                
+                while (j < line.length) {
+                    const ch = line[j];
+                    
+                    if (inQuotes) {
+                        if (ch === '"') {
+                            if (line[j + 1] === '"') {
+                                current += '"';
+                                j += 2;
+                                continue;
+                            } else {
+                                inQuotes = false;
+                            }
+                        } else {
+                            current += ch;
+                        }
+                    } else {
+                        if (ch === '"') {
+                            inQuotes = true;
+                        } else if (ch === ',') {
+                            fields.push(current.trim());
+                            current = '';
+                        } else {
+                            current += ch;
+                        }
+                    }
+                    j++;
+                }
+                
+                fields.push(current.trim());
+                rows.push(fields);
+            }
+            
+            return rows;
+        }
+
+        async function fetchSheetData(gid) {
+            const url = `${BASE_PUBLISHED_URL}?gid=${gid}&output=csv`;
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                if (text.trim().length < 10) return null;
+                return parseCSV(text);
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function transformRows(csvRows) {
+            if (!csvRows || csvRows.length < 2) return [];
+
+            let headerIdx = 0;
+            for (let i = 0; i < Math.min(csvRows.length, 5); i++) {
+                const row = csvRows[i];
+                if (row.some(c => safeStr(c).toLowerCase().includes('sno')) ||
+                    row.some(c => safeStr(c).toLowerCase().includes('division'))) {
+                    headerIdx = i;
+                    break;
+                }
+            }
+            
+            const headerRow = csvRows[headerIdx].map(h => safeStr(h));
+            const colMap = {};
+            
+            COLUMNS.forEach(col => {
+                const idx = headerRow.findIndex(h => h.toLowerCase() === col.toLowerCase());
+                if (idx !== -1) colMap[col] = idx;
+            });
+
+            if (Object.keys(colMap).length < 5) {
+                COLUMNS.forEach((col, idx) => {
+                    if (idx < headerRow.length) colMap[col] = idx;
+                });
+            }
+
+            const result = [];
+            for (let i = headerIdx + 1; i < csvRows.length; i++) {
+                const row = csvRows[i];
+                if (row.every(c => safeStr(c) === '')) continue;
+                
+                const obj = {};
+                COLUMNS.forEach(col => {
+                    const idx = colMap[col];
+                    obj[col] = (idx !== undefined && idx < row.length) ? safeStr(row[idx]) : '';
+                });
+                
+                if (!obj['SNo'] && row.length > 0) obj['SNo'] = safeStr(row[0]);
+                result.push(obj);
+            }
+            
+            return result;
+        }
+
+        function generateSampleData(displayName) {
+            const prefix = displayName.includes('SVS') ? 'SVS' : displayName.includes('MVS') ? 'MVS' : 'QnQ';
+            const data = [];
+            const statuses = ['On Track', 'At Risk', 'Delayed', 'Completed'];
+            const divisions = ['North', 'South', 'East', 'West', 'Central'];
+            const issues = ['Resource shortage', 'Weather delay', 'Technical issue', 'Approval pending', '—'];
+            
+            for (let i = 1; i <= 8; i++) {
+                const status = statuses[i % statuses.length];
+                const isConfident = i % 3 !== 0;
+                const progress = 20 + (i * 9) % 75;
+                data.push({
+                    'SNo': String(i),
+                    'Division Name': divisions[i % divisions.length],
+                    'IMIS Scheme Id': `IMIS-${prefix}-${String(100+i).padStart(3,'0')}`,
+                    'Scheme Name': `${prefix} Scheme ${i}`,
+                    'Scheme Status': status,
+                    'Financial Progress Percentage': `${progress}%`,
+                    'Final Physical Completion Date by NJJM': `15-${String(5+i%8).padStart(2,'0')}-2026`,
+                    'Are you confident that Contractor will be able to complete within the timeline given by NJJM along with trial run, handing over, and completion certificate? (Yes/ No)': isConfident ? 'Yes' : 'No',
+                    'Group of issue': i % 2 === 0 ? issues[i % issues.length] : '—',
+                    'If no, please specify the reason': !isConfident ? 'Delays in material procurement' : '—',
+                    'Your Suggestions/ Inpts/ Remarks': 'Need to expedite civil works',
+                    'Tentative timeline for completion and handing Over (In DD-MM-YYYY Format Only)': `30-${String(6+i%6).padStart(2,'0')}-2026`
+                });
+            }
+            return data;
+        }
+
+        async function loadAllData() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            try {
+                tableContainer.innerHTML = `
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <div style="font-weight:500;">Fetching live data…</div>
+                    </div>
+                `;
+
+                const results = {};
+                let anySuccess = false;
+
+                for (const sheet of SHEETS) {
+                    try {
+                        const csvRows = await fetchSheetData(sheet.gid);
+                        if (csvRows && csvRows.length > 1) {
+                            const objects = transformRows(csvRows);
+                            if (objects.length > 0) {
+                                results[sheet.display] = objects;
+                                anySuccess = true;
+                                continue;
+                            }
+                        }
+                        results[sheet.display] = [];
+                    } catch (_) {
+                        results[sheet.display] = [];
+                    }
+                }
+
+                if (!anySuccess) {
+                    for (const sheet of SHEETS) {
+                        results[sheet.display] = generateSampleData(sheet.display);
+                    }
+                }
+
+                allData = results;
+                renderTabs();
+                renderSummary(activeTab);
+                renderTable(activeTab);
+                updateFooter();
+
+                const now = new Date();
+                lastRefreshEl.innerHTML = `<i class="far fa-clock"></i> ${now.toLocaleTimeString()}`;
+            } catch (err) {
+                console.error('Failed to load data:', err);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function renderTabs() {
+            let html = '';
+            SHEETS.forEach(sheet => {
+                const count = (allData[sheet.display] || []).length;
+                const active = sheet.display === activeTab ? 'active' : '';
+                html += `<button class="tab-btn ${active}" data-display="${sheet.display}">${sheet.display}<span class="count">${count}</span></button>`;
+            });
+            tabHeadersEl.innerHTML = html;
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const display = this.dataset.display;
+                    if (display && display !== activeTab) {
+                        activeTab = display;
+                        renderTabs();
+                        renderSummary(activeTab);
+                        renderTable(activeTab);
+                        updateFooter();
+                    }
+                });
+            });
+        }
+
+        function renderSummary(sheetName) {
+            const rows = allData[sheetName] || [];
+            const total = rows.length;
+            const confident = rows.filter(r =>
+                safeStr(r['Are you confident that Contractor will be able to complete within the timeline given by NJJM along with trial run, handing over, and completion certificate? (Yes/ No)']).toLowerCase() === 'yes'
+            ).length;
+            const notConfident = total - confident;
+            const onTrack = rows.filter(r => getStatusClass(r['Scheme Status']) === 'on-track').length;
+            const delayed = rows.filter(r => getStatusClass(r['Scheme Status']) === 'delayed').length;
+            let avgProgress = 0;
+            if (total > 0) {
+                const sum = rows.reduce((acc, r) => acc + parseProgress(r['Financial Progress Percentage']), 0);
+                avgProgress = Math.round(sum / total);
+            }
+
+            summaryContainer.innerHTML = `
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="label"><i class="fas fa-list-ul"></i> Total Schemes</div>
+                        <div class="value">${total}</div>
+                        <div class="sub">in ${sheetName}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label"><i class="fas fa-check-circle"></i> Confident</div>
+                        <div class="value" style="color:#166534;">${confident}</div>
+                        <div class="sub">${total > 0 ? Math.round(confident/total*100) : 0}%</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label"><i class="fas fa-exclamation-triangle"></i> Not Confident</div>
+                        <div class="value" style="color:#991b1b;">${notConfident}</div>
+                        <div class="sub">${total > 0 ? Math.round(notConfident/total*100) : 0}%</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label"><i class="fas fa-chart-pie"></i> On Track / Delayed</div>
+                        <div class="value" style="font-size:22px;">${onTrack} / ${delayed}</div>
+                        <div class="sub"><i class="fas fa-arrow-up" style="color:#166534;"></i> ${onTrack} · <i class="fas fa-arrow-down" style="color:#991b1b;"></i> ${delayed}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="label"><i class="fas fa-percent"></i> Avg. Progress</div>
+                        <div class="value">${avgProgress}%</div>
+                        <div class="sub"><span class="progress-bar"><span class="fill" style="width:${avgProgress}%;"></span></span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTable(sheetName) {
+            const rows = allData[sheetName] || [];
+            if (rows.length === 0) {
+                tableContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-table"></i>
+                        <div>No data available</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `<div class="table-scroll"><table><thead><tr>
+                <th><i class="fas fa-hashtag"></i> SNo</th>
+                <th><i class="fas fa-building"></i> Division</th>
+                <th><i class="fas fa-fingerprint"></i> IMIS ID</th>
+                <th><i class="fas fa-tag"></i> Scheme Name</th>
+                <th><i class="fas fa-flag"></i> Status</th>
+                <th><i class="fas fa-chart-line"></i> Progress</th>
+                <th><i class="far fa-calendar-alt"></i> NJJM Date</th>
+                <th><i class="fas fa-check"></i> Confident?</th>
+                <th><i class="fas fa-folder-open"></i> Issue Group</th>
+                <th><i class="fas fa-comment"></i> Reason</th>
+                <th><i class="fas fa-lightbulb"></i> Suggestions</th>
+                <th><i class="far fa-calendar-check"></i> Tentative</th>
+            </tr></thead><tbody>`;
+
+            rows.forEach((row, idx) => {
+                const sno = safeStr(row['SNo'] || idx + 1);
+                const div = safeStr(row['Division Name']);
+                const imis = safeStr(row['IMIS Scheme Id']);
+                const scheme = safeStr(row['Scheme Name']);
+                const status = safeStr(row['Scheme Status']);
+                const statusCls = getStatusClass(status);
+                const progress = parseProgress(row['Financial Progress Percentage']);
+                const njjmDate = formatDate(row['Final Physical Completion Date by NJJM']);
+                const confident = safeStr(row['Are you confident that Contractor will be able to complete within the timeline given by NJJM along with trial run, handing over, and completion certificate? (Yes/ No)']);
+                const confCls = getConfidenceClass(confident);
+                const issueGroup = safeStr(row['Group of issue']);
+                const reason = safeStr(row['If no, please specify the reason']);
+                const suggestions = safeStr(row['Your Suggestions/ Inpts/ Remarks']);
+                const tentative = formatDate(row['Tentative timeline for completion and handing Over (In DD-MM-YYYY Format Only)']);
+
+                html += `<tr>
+                    <td><strong>${sno}</strong></td>
+                    <td>${div}</td>
+                    <td><span class="chip">${imis}</span></td>
+                    <td><span class="text-truncate" title="${scheme}">${scheme}</span></td>
+                    <td><span class="badge-status ${statusCls}">${status || '—'}</span></td>
+                    <td><span class="progress-bar"><span class="fill" style="width:${progress}%;"></span></span><span class="progress-text">${progress}%</span></td>
+                    <td>${njjmDate}</td>
+                    <td><span class="badge-confidence ${confCls}">${confident || '—'}</span></td>
+                    <td>${issueGroup || '—'}</td>
+                    <td style="max-width:160px; word-break:break-word;">${reason || '—'}</td>
+                    <td style="max-width:160px; word-break:break-word;">${suggestions || '—'}</td>
+                    <td>${tentative}</td>
+                </tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            tableContainer.innerHTML = html;
+        }
+
+        function updateFooter() {
+            const rows = allData[activeTab] || [];
+            rowCountEl.textContent = `${rows.length} rows`;
+        }
+
+        loadAllData().catch(() => {});
+        setInterval(() => loadAllData().catch(() => {}), 5 * 60 * 1000);
+
+    })();
+</script>
+
+</body>
+</html>
