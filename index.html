@@ -469,7 +469,7 @@ footer{
     <div>
       <div class="eyebrow">Public Health Engineering | Assam &nbsp;|&nbsp; JJM 2.0</div>
       <h1>CIRP -- Timeline Matrix <span style="font-size:0.5em; font-weight:600; color:#8FD8D1;">| Tinsukia Division</span></h1>
-      <div class="subtitle">Live contractor implementation review -- physical &amp; financial progress against NJJM deadlines across PWSS and MVS schemes, filtered to Tinsukia Division only.</div>
+      <div class="subtitle">Live contractor implementation review --  &amp; financial progress against NJJM deadlines across PWSS and MVS schemes, filtered to Tinsukia Division only.</div>
     </div>
     <div class="status-cluster">
       <label class="auto-toggle">
@@ -818,7 +818,7 @@ function renderKPIs(filtered){
     {label:"Completed / Handed Over", value: completed, sub: total ? (completed/total*100).toFixed(1)+"%  of filtered" : "--", cls:"accent-success"},
     {label:"On Track (Yes)", value: ontrack, sub: total ? (ontrack/total*100).toFixed(1)+"%  of filtered" : "--", cls:"accent-teal"},
     {label:"At Risk (No)", value: atrisk, sub: total ? (atrisk/total*100).toFixed(1)+"%  need attention" : "--", cls:"accent-alert"},
-    {label:"Avg Physical Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
+    {label:"Avg Financial Progress", value: avgFin.toFixed(1)+"%", sub: `${finVals.length} schemes reporting`, cls:"", gauge:avgFin}
   ];
   const strip = document.getElementById("kpiStrip");
   strip.innerHTML = "";
@@ -917,7 +917,7 @@ function exportToCSV(rows, filename){
     {key:"schemeId", label:"Scheme ID"},
     {key:"schemeName", label:"Scheme Name"},
     {key:"status", label:"Status"},
-    {key:"finPct", label:"Physical %"},
+    {key:"finPct", label:"Financial %"},
     {key:"njjmDate", label:"NJJM Target Date"},
     {key:"risk", label:"Confidence"},
     {key:"issueGroup", label:"Issue Group"},
