@@ -134,6 +134,47 @@ button.refresh-btn:hover{background:#3FC5BA;}
 button.refresh-btn:active{transform:scale(.96);}
 button.refresh-btn.spinning svg{animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+a.sheet-btn{
+  background:linear-gradient(135deg, #6FE0D6 0%, #3FC5BA 100%);
+  color:#04211E;
+  border:none;
+  font-weight:700;
+  font-size:13px;
+  padding:9px 16px;
+  border-radius:8px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+  text-decoration:none;
+  box-shadow:0 4px 12px rgba(111, 224, 214, 0.35);
+  animation:popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position:relative;
+}
+a.sheet-btn:hover{
+  background:linear-gradient(135deg, #3FC5BA 0%, #2BA39F 100%);
+  transform:scale(1.08);
+  box-shadow:0 6px 20px rgba(15, 158, 150, 0.45);
+}
+a.sheet-btn:active{
+  transform:scale(.95);
+}
+@keyframes popIn{
+  0%{
+    transform:scale(0);
+    opacity:0;
+    box-shadow:0 0 0 0 rgba(111, 224, 214, 0.7);
+  }
+  50%{
+    box-shadow:0 0 0 10px rgba(111, 224, 214, 0);
+  }
+  100%{
+    transform:scale(1);
+    opacity:1;
+    box-shadow:0 4px 12px rgba(111, 224, 214, 0.35);
+  }
+}
 label.auto-toggle{
   display:flex;
   align-items:center;
@@ -468,8 +509,8 @@ footer{
   <div class="top-row">
     <div>
       <div class="eyebrow">Public Health Engineering | Assam &nbsp;|&nbsp; JJM 2.0</div>
-      <h1>CIRP -- Timeline Matrix <span style="font-size:0.5em; font-weight:600; color:#8FD8D1;">| Tinsukia Division</span></h1>
-      <div class="subtitle">Live contractor implementation review --  &amp; financial progress against NJJM deadlines across PWSS and MVS schemes, filtered to Tinsukia Division only.</div>
+      <h1>CIRP -- Timeline Matrix <span style="font-size:0.5em; font-weight:600; color:#8FD8D1;">| PHED DIBRUGARH CIRCLE</span></h1>
+      <div class="subtitle">Live contractor implementation review --  &amp; financial progress against NJJM deadlines across PWSS and MVS schemes, covering Sivasagar, Tinsukia, Dibrugarh, and Nazira divisions.</div>
     </div>
     <div class="status-cluster">
       <label class="auto-toggle">
@@ -485,6 +526,10 @@ footer{
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
         Refresh
       </button>
+      <a class="sheet-btn" href="https://docs.google.com/spreadsheets/d/1e5-DMSWzGL8MUNVFiqrbG9PV0s4zJ2ywEATOrrUUoDY/edit?gid=808219995#gid=808219995" target="_blank" rel="noopener noreferrer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Open Sheet
+      </a>
     </div>
   </div>
 </header>
@@ -509,9 +554,6 @@ footer{
       <option value="unknown">Not specified</option>
     </select>
     <select id="fIssue"><option value="">All issue groups</option></select>
-    <select id="fSOName"><option value="">All SO Names</option></select>
-    <select id="fSubDiv"><option value="">All Sub-Divisions</option></select>
-    <select id="fLAC"><option value="">All LACs</option></select>
     <input type="text" id="fSearch" placeholder="Search scheme name, ID or division...">
     <button class="clear-btn" id="clearFilters">Clear filters</button>
     <span class="result-count" id="resultCount"></span>
@@ -555,12 +597,11 @@ footer{
 </div>
 
 <footer>
-  Source: Google Sheet "CIRP - Timeline Matrix" (live) | Refreshed automatically from published tabs New SVS-PWSS, New MVS, New MVS (Q&amp;Q) | Filtered to Division Name = Tinsukia | Built for CIRP monitoring
+  Source: Google Sheet "CIRP - Timeline Matrix" (live) | Refreshed automatically from published tabs New SVS-PWSS, New MVS, New MVS (Q&amp;Q) | Filtered to Sivasagar, Tinsukia, Dibrugarh, Nazira divisions | Built for CIRP monitoring
 </footer>
 
 <script>
 const SHEET_ID = "1e5-DMSWzGL8MUNVFiqrbG9PV0s4zJ2ywEATOrrUUoDY";
-const IMIS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQwCZb7LO3b1KMda5osejVObaQuYwbz4pak7tiH4tjiVLe9zg7UiHyb4lPqVqdFCtPm22N8k3vtYSOX/pub?gid=0&single=true&output=csv";
 
 const TABS = [
   {key:"pwss",  name:"New SVS - PWSS",  short:"PWSS (SVS)", gid:"700142457"},
@@ -568,10 +609,9 @@ const TABS = [
   {key:"mvsqq", name:"New MVS (Q&Q)",   short:"MVS (Q&Q)",  gid:"808219995"}
 ];
 
-const TARGET_DIVISION = "tinsukia";
+const TARGET_DIVISIONS = ["sivasagar", "tinsukia", "dibrugarh", "nazira"];
 
 let allRows = [];
-let imisData = {};
 let activeTab = "all";
 let sortState = {col:null, dir:1};
 let expandedKey = null;
@@ -599,28 +639,6 @@ async function fetchCSVText(url){
     }catch(e){ lastErr = e; }
   }
   throw lastErr;
-}
-
-async function loadIMISData(){
-  try{
-    const text = await fetchCSVText(IMIS_SHEET_URL);
-    const parsed = Papa.parse(text, {skipEmptyLines:false});
-    const rows = parsed.data;
-    imisData = {};
-    rows.forEach(r=>{
-      const schemeId = (r[0]||"").trim();
-      if(schemeId && schemeId.toLowerCase() !== "imis scheme id"){
-        imisData[schemeId] = {
-          soName: (r[1]||"").trim(),
-          subDivision: (r[2]||"").trim(),
-          lac: (r[3]||"").trim()
-        };
-      }
-    });
-    console.log("IMIS data loaded:", Object.keys(imisData).length, "records");
-  }catch(err){
-    console.error("Failed to load IMIS data:", err);
-  }
 }
 
 function normRisk(conf){
@@ -656,13 +674,11 @@ function parseTab(csvText, tab){
     if(!sno || isNaN(parseInt(sno,10))) continue;
 
     const normDivision = division.replace(/\s+/g, " ").trim().toLowerCase();
-    if(!normDivision.includes(TARGET_DIVISION)) continue;
-
+    if(!TARGET_DIVISIONS.some(d => normDivision.includes(d))) continue;
     const finPctRaw = (r[5]||"").trim();
     const finPct = finPctRaw === "" ? null : parseFloat(finPctRaw.replace(/[^\d.\-]/g,""));
     const confRaw = (r[7]||"").trim();
     
-    const imis = imisData[schemeId] || {};
     out.push({
       tabKey: tab.key,
       tabShort: tab.short,
@@ -679,9 +695,6 @@ function parseTab(csvText, tab){
       reason: (r[9]||"").trim(),
       suggestions: (r[10]||"").trim(),
       tentativeDate: (r[11]||"").trim(),
-      soName: imis.soName || "--",
-      subDivision: imis.subDivision || "--",
-      lac: imis.lac || "--",
       key: tab.key + "-" + sno + "-" + schemeId
     });
   }
@@ -693,7 +706,6 @@ async function loadAll(userTriggered){
   btn.classList.add("spinning");
   setLive(null);
   try{
-    await loadIMISData();
     const results = await Promise.all(TABS.map(async t=>{
       const text = await fetchCSVText(csvUrl(t));
       return parseTab(text, t);
@@ -702,7 +714,7 @@ async function loadAll(userTriggered){
     document.getElementById("errorBanner").classList.remove("show");
     setLive(true);
     if(allRows.length === 0){
-      console.warn("No rows matched TARGET_DIVISION");
+      console.warn("No rows matched TARGET_DIVISIONS");
     }
     render();
   }catch(err){
@@ -733,9 +745,6 @@ function getFilterState(){
     status: document.getElementById("fStatus").value,
     risk: document.getElementById("fRisk").value,
     issue: document.getElementById("fIssue").value,
-    soName: document.getElementById("fSOName").value,
-    subDiv: document.getElementById("fSubDiv").value,
-    lac: document.getElementById("fLAC").value,
     search: document.getElementById("fSearch").value.trim().toLowerCase()
   };
 }
@@ -748,9 +757,6 @@ function applyFilters(rows){
     if(f.status && r.status !== f.status) return false;
     if(f.risk && r.risk !== f.risk) return false;
     if(f.issue && r.issueGroup !== f.issue) return false;
-    if(f.soName && r.soName !== f.soName) return false;
-    if(f.subDiv && r.subDivision !== f.subDiv) return false;
-    if(f.lac && r.lac !== f.lac) return false;
     if(f.search){
       const hay = (r.schemeName+" "+r.schemeId+" "+r.division).toLowerCase();
       if(!hay.includes(f.search)) return false;
@@ -763,16 +769,9 @@ function populateFilterOptions(){
   const divisions = [...new Set(allRows.map(r=>r.division))].sort();
   const statuses = [...new Set(allRows.map(r=>r.status).filter(Boolean))].sort();
   const issues = [...new Set(allRows.map(r=>r.issueGroup).filter(Boolean))].sort();
-  const soNames = [...new Set(allRows.map(r=>r.soName).filter(s=>s!=="--"))].sort();
-  const subDivs = [...new Set(allRows.map(r=>r.subDivision).filter(s=>s!=="--"))].sort();
-  const lacs = [...new Set(allRows.map(r=>r.lac).filter(l=>l!=="--"))].sort();
-  
   fillSelect("fDivision", divisions);
   fillSelect("fStatus", statuses);
   fillSelect("fIssue", issues);
-  fillSelect("fSOName", soNames);
-  fillSelect("fSubDiv", subDivs);
-  fillSelect("fLAC", lacs);
 }
 function fillSelect(id, values){
   const sel = document.getElementById(id);
@@ -921,9 +920,6 @@ function exportToCSV(rows, filename){
     {key:"njjmDate", label:"NJJM Target Date"},
     {key:"risk", label:"Confidence"},
     {key:"issueGroup", label:"Issue Group"},
-    {key:"soName", label:"SO Name"},
-    {key:"subDivision", label:"Sub-Division"},
-    {key:"lac", label:"LAC"},
     {key:"reason", label:"Reason"},
     {key:"suggestions", label:"Suggestions"},
     {key:"tentativeDate", label:"Tentative Date"}
@@ -994,9 +990,6 @@ const COLUMNS = [
   {key:"njjmDate", label:"NJJM Target"},
   {key:"risk", label:"Confidence"},
   {key:"issueGroup", label:"Issue Group"},
-  {key:"soName", label:"SO Name"},
-  {key:"subDivision", label:"Sub-Division"},
-  {key:"lac", label:"LAC"},
   {key:"tentativeDate", label:"Tentative Date"}
 ];
 
@@ -1041,6 +1034,8 @@ function renderTableBody(filtered){
   sorted.forEach(r=>{
     const tr = document.createElement("tr");
     const hasDetail = r.reason || r.suggestions;
+    const finPctStr = r.finPct!==null ? r.finPct.toFixed(1)+"%" : "--";
+    const gaugeWidth = r.finPct!==null ? Math.min(100,r.finPct) : 0;
     tr.innerHTML = `
       <td>${hasDetail ? `<button class="expand-toggle" data-key="${r.key}">${expandedKey===r.key?"-":"+"}</button>` : ""}</td>
       <td><span class="tab-tag">${r.tabShort}</span></td>
@@ -1049,13 +1044,10 @@ function renderTableBody(filtered){
       <td class="mono">${r.schemeId}</td>
       <td class="wrap">${r.schemeName}</td>
       <td>${r.status||"--"}</td>
-      <td class="mono">${r.finPct!==null ? r.finPct.toFixed(1)+"%" : "--"} <span class="flow-gauge mini risk-${r.risk}"><span class="fill" style="width:${r.finPct!==null?Math.min(100,r.finPct):0}%"></span></span></td>
+      <td class="mono">${finPctStr} <span class="flow-gauge mini risk-${r.risk}"><span class="fill" style="width:${gaugeWidth}%"></span></span></td>
       <td>${r.njjmDate||"--"}</td>
       <td><span class="badge ${r.risk}">${riskLabel(r.risk)}</span></td>
       <td class="wrap">${r.issueGroup||"--"}</td>
-      <td>${r.soName||"--"}</td>
-      <td>${r.subDivision||"--"}</td>
-      <td>${r.lac||"--"}</td>
       <td class="mono">${r.tentativeDate||"--"}</td>
     `;
     frag.appendChild(tr);
@@ -1093,7 +1085,7 @@ function render(skipFilterRepopulate){
 }
 
 /* Event handlers */
-["fDivision","fStatus","fRisk","fIssue","fSOName","fSubDiv","fLAC"].forEach(id=>{
+["fDivision","fStatus","fRisk","fIssue"].forEach(id=>{
   document.getElementById(id).addEventListener("change", ()=>render(true));
 });
 document.getElementById("fSearch").addEventListener("input", ()=>render(true));
@@ -1102,9 +1094,6 @@ document.getElementById("clearFilters").addEventListener("click", ()=>{
   document.getElementById("fStatus").value="";
   document.getElementById("fRisk").value="";
   document.getElementById("fIssue").value="";
-  document.getElementById("fSOName").value="";
-  document.getElementById("fSubDiv").value="";
-  document.getElementById("fLAC").value="";
   document.getElementById("fSearch").value="";
   activeTab = "all";
   render();
